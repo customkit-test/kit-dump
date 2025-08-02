@@ -6,15 +6,15 @@ local Instance = roblox.Instance
 local SourceFolder = "src"
 
 function GetArgument(type: string, prompt: string?, ...)
-	local value = stdio.prompt(type, prompt, ...)
+	local Value = stdio.prompt(type, prompt, ...)
 
-	if not value or value == "" then
+	if not Value or Value == "" then
 		repeat
-			value = stdio.prompt(type, prompt)
-		until value and value ~= ""
+			Value = stdio.prompt(type, prompt)
+		until Value and Value ~= ""
 	end
 
-	return value
+	return Value
 end
 
 function SortBySemver(List: { string }): ({ string }, { [number]: number })
@@ -119,7 +119,8 @@ function FetchOptions()
 	if BundleAll == true then
 		Confirmed = stdio.prompt("confirm", "are you sure you would like to bundle all of " .. OutputFile .. "'s kits?")
 	else
-		Confirmed = stdio.prompt("confirm", "are you sure you would like to bundle " .. OutputFile:gsub("-", " Kit ") .. "?")
+		Confirmed =
+			stdio.prompt("confirm", "are you sure you would like to bundle " .. OutputFile:gsub("-", " Kit ") .. "?")
 	end
 
 	if not Confirmed then
@@ -163,7 +164,7 @@ local Directory
 
 OutputFile = string.format("%s.rbxm", OutputFile)
 
-if BundleAll == true then 
+if BundleAll == true then
 	Directory = string.format("%s/%s", SourceFolder, ChosenKit)
 else
 	Directory = string.format("%s/%s/%s", SourceFolder, ChosenKit, ChosenVersion)
