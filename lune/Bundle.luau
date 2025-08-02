@@ -3,9 +3,9 @@ local roblox = require("@lune/roblox")
 local stdio = require("@lune/stdio")
 
 local Instance = roblox.Instance
-local SRC_FOLDER = "src"
+local SourceFolder = "src"
 
-function getArgument(type: string, prompt: string?, ...)
+function GetArgument(type: string, prompt: string?, ...)
 	local value = stdio.prompt(type, prompt, ...)
 
 	if not value or value == "" then
@@ -17,140 +17,164 @@ function getArgument(type: string, prompt: string?, ...)
 	return value
 end
 
-function sortBySemver(list: { string }): ({ string }, { [number]: number })
-	local parsed = {}
+function SortBySemver(List: { string }): ({ string }, { [number]: number })
+	local Parsed = {}
 
-	for _, version in ipairs(list) do
-		local v = version:gsub("^v", "")
-		local parts = string.split(v, ".")
-		local major = tonumber(parts[1]) or 0
-		local minor = tonumber(parts[2]) or 0
-		local patch = tonumber(parts[3]) or 0
+	for _, Version in pairs(List) do
+		local RawVersion = Version:gsub("^v", "")
 
-		table.insert(parsed, {
-			original = version,
-			major = major,
-			minor = minor,
-			patch = patch,
+		local Parts = string.split(RawVersion, ".")
+		local Major = tonumber(Parts[1]) or 0
+		local Minor = tonumber(Parts[2]) or 0
+		local Patch = tonumber(Parts[3]) or 0
+
+		table.insert(Parsed, {
+			Original = Version,
+
+			Major = Major,
+			Minor = Minor,
+			Patch = Patch,
 		})
 	end
 
-	table.sort(parsed, function(a, b)
-		if a.major ~= b.major then
-			return a.major < b.major
-		elseif a.minor ~= b.minor then
-			return a.minor < b.minor
+	table.sort(Parsed, function(A, B)
+		if A.Major ~= B.Major then
+			return A.Major < B.Major
+		elseif A.Minor ~= B.Minor then
+			return A.Minor < B.Minor
 		else
-			return a.patch < b.patch
+			return A.Patch < B.Patch
 		end
 	end)
 
-	local displayList = {}
-	local indexMap = {} -- [displayIndex] = originalVersionIndex
-	local lastMajor = nil
+	local DisplayList = {}
+	local IndexMap = {}
+	local LastMajor = nil
 
-	for i, entry in ipairs(parsed) do
-		if entry.major ~= lastMajor then
-			table.insert(displayList, "--- v" .. entry.major .. " ---")
-			lastMajor = entry.major
+	for Index, Entry in pairs(Parsed) do
+		if Entry.Major ~= LastMajor then
+			table.insert(DisplayList, "--- v" .. Entry.Major .. " ---")
+			LastMajor = Entry.Major
 		end
 
-		table.insert(displayList, entry.original)
-		indexMap[#displayList] = i -- map display index to parsed index
+		table.insert(DisplayList, Entry.Original)
+		IndexMap[#DisplayList] = Index
 	end
 
-	return displayList, indexMap
+	return DisplayList, IndexMap
 end
 
-local kits = {}
-local versions = {}
+local Kits = {}
+local Versions = {}
 
-for _, kit in pairs(fs.readDir(SRC_FOLDER)) do
-	table.insert(kits, kit)
-	versions[kit] = {}
+for _, Kit in pairs(fs.readDir(SourceFolder)) do
+	table.insert(Kits, Kit)
+	Versions[Kit] = {}
 
-	for _, kitVersion in pairs(fs.readDir(SRC_FOLDER .. "/" .. kit)) do
-		table.insert(versions[kit], kitVersion)
+	for _, KitVersion in pairs(fs.readDir(SourceFolder .. "/" .. Kit)) do
+		table.insert(Versions[Kit], KitVersion)
 	end
 end
 
-local kitNumber = getArgument("select", "choose kit", kits)
-local chosenKit = kits[kitNumber]
+local KitNumber = GetArgument("select", "choose kit", Kits)
+local ChosenKit = Kits[KitNumber]
 
-function fetchOptions()
-	local versionsRaw = versions[chosenKit]
-	local displayList, indexMap = sortBySemver(versionsRaw)
+function FetchOptions()
+	local VersionsRaw = Versions[ChosenKit]
+	local DisplayList, IndexMap = SortBySemver(VersionsRaw)
 
-	table.insert(displayList, "---")
-	table.insert(displayList, "Back")
+	table.insert(DisplayList, "--- Misc ---")
+	table.insert(DisplayList, "Back")
+	table.insert(DisplayList, "Bundle All")
 
-	local versionNumber = getArgument("select", "choose version", displayList)
+	local VersionNumber = GetArgument("select", "choose version", DisplayList)
+	local BundleAll = false
 
-	if displayList[versionNumber] == "Back" then 
-		kitNumber = getArgument("select", "choose kit", kits)
-		chosenKit = kits[kitNumber]
+	if DisplayList[VersionNumber] == "Back" then
+		KitNumber = GetArgument("select", "choose kit", Kits)
+		ChosenKit = Kits[KitNumber]
 
-		return fetchOptions()
+		return FetchOptions()
+	elseif DisplayList[VersionNumber] == "Bundle All" then
+		BundleAll = true
 	end
 
-	local parsedIndex = indexMap[versionNumber]
+	local ParsedIndex = IndexMap[VersionNumber]
 
-	if not parsedIndex then
-		return fetchOptions()
+	if not ParsedIndex and not BundleAll then
+		return FetchOptions()
 	end
 
-	local chosenVersion = versionsRaw[parsedIndex]
-	local OUTPUT_FILE = chosenKit .. "-" .. chosenVersion .. ".rbxm"
+	local ChosenVersion = VersionsRaw[ParsedIndex]
+	local OutputFile
 
-	local confirmed: boolean = stdio.prompt("confirm", "are you sure you would like to build " .. OUTPUT_FILE .. "?")
+	if BundleAll == true then
+		OutputFile = ChosenKit
+	else
+		OutputFile = string.format("%s-%s", ChosenKit, ChosenVersion)
+	end
 
-	if not confirmed then
+	local Confirmed: boolean
+
+	if BundleAll == true then
+		Confirmed = stdio.prompt("confirm", "are you sure you would like to bundle all of " .. OutputFile .. "'s kits?")
+	else
+		Confirmed = stdio.prompt("confirm", "are you sure you would like to bundle " .. OutputFile:gsub("-", " Kit ") .. "?")
+	end
+
+	if not Confirmed then
 		stdio.write("\n")
-		return fetchOptions()
+		return FetchOptions()
 	end
 
-	return OUTPUT_FILE
+	return ChosenVersion, OutputFile, BundleAll
 end
 
-local OUTPUT_FILE = fetchOptions()
+function CreateModuleScript(Name, Source)
+	local Module = Instance.new("ModuleScript")
 
-function createModuleScript(name, source)
-	local module = Instance.new("ModuleScript")
+	Module.Name = Name
+	Module.Source = Source
 
-	module.Name = name
-	module.Source = source
-
-	return module
+	return Module
 end
 
-function processDirectory(dir)
-	local split = string.split(dir, "/")
-	local folder = Instance.new("Folder")
+function ProcessDirectory(Directory)
+	local Folder = Instance.new("Folder")
 
-	folder.Name = dir ~= "src" and split[#split] or "UniversalRepo"
+	for _, File in pairs(fs.readDir(Directory)) do
+		local FullPath = Directory .. "/" .. File
 
-	for _, file in pairs(fs.readDir(dir)) do
-		local fullPath = dir .. "/" .. file
+		if fs.isDir(FullPath) then
+			ProcessDirectory(FullPath).Parent = Folder
+		elseif fs.isFile(FullPath) and File:match("%.lua[u]?$") then
+			local Source = fs.readFile(FullPath)
+			local Name = File:gsub("%.lua[u]?$", "")
 
-		if fs.isDir(fullPath) then
-			processDirectory(fullPath).Parent = folder
-		elseif fs.isFile(fullPath) and file:match("%.lua[u]?$") then
-			local source = fs.readFile(fullPath)
-			local name = file:gsub("%.lua[u]?$", "")
-
-			createModuleScript(name, source).Parent = folder
+			CreateModuleScript(Name, Source).Parent = Folder
 		end
 	end
 
-	return folder
+	return Folder
 end
 
-local rootInstance = processDirectory(SRC_FOLDER)
-local buffer = roblox.serializeModel({ rootInstance })
+local ChosenVersion, OutputFile, BundleAll = FetchOptions()
+local Directory
 
-if not fs.isDir("build") then 
-	fs.writeDir("build/")
+OutputFile = string.format("%s.rbxm", OutputFile)
+
+if BundleAll == true then 
+	Directory = string.format("%s/%s", SourceFolder, ChosenKit)
+else
+	Directory = string.format("%s/%s/%s", SourceFolder, ChosenKit, ChosenVersion)
 end
 
-fs.writeFile("build/" .. OUTPUT_FILE, buffer)
-print("✅ Serialized", SRC_FOLDER, "→", "build/" .. OUTPUT_FILE)
+local RootInstance = ProcessDirectory(Directory)
+local SerializedInstance = roblox.serializeModel({ RootInstance })
+
+if not fs.isDir("bundles") then
+	fs.writeDir("bundles/")
+end
+
+fs.writeFile("bundles/" .. OutputFile, SerializedInstance)
+print("✅ Bundled", Directory, "in", "bundles/" .. OutputFile)

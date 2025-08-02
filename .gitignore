@@ -1,3 +1,3 @@
 .luaurc
 selene.toml
-build/*
+bundles
