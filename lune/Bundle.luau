@@ -53,7 +53,7 @@ function SortBySemver(List: { string }): ({ string }, { [number]: number })
 
 	for Index, Entry in pairs(Parsed) do
 		if Entry.Major ~= LastMajor then
-			table.insert(DisplayList, "--- v" .. Entry.Major .. " ---")
+			table.insert(DisplayList, "--- v" .. Entry.Major .. ".x" .. " ---")
 			LastMajor = Entry.Major
 		end
 
@@ -83,20 +83,28 @@ function FetchOptions()
 	local VersionsRaw = Versions[ChosenKit]
 	local DisplayList, IndexMap = SortBySemver(VersionsRaw)
 
-	table.insert(DisplayList, "--- Misc ---")
-	table.insert(DisplayList, "Back")
-	table.insert(DisplayList, "Bundle All")
+	if #DisplayList <= 0 then
+		DisplayList = { "no options found" }
+	end
+
+	table.insert(DisplayList, "--- misc ---")
+
+	if not table.find(DisplayList, "no options found") then
+		table.insert(DisplayList, "bundle all")
+	end
+
+	table.insert(DisplayList, "back")
 
 	local VersionNumber = GetArgument("select", "choose version", DisplayList)
 	local BundleAll = false
 
-	if DisplayList[VersionNumber] == "Back" then
+	if DisplayList[VersionNumber] == "bundle all" then
+		BundleAll = true
+	elseif DisplayList[VersionNumber] == "back" then
 		KitNumber = GetArgument("select", "choose kit", Kits)
 		ChosenKit = Kits[KitNumber]
 
 		return FetchOptions()
-	elseif DisplayList[VersionNumber] == "Bundle All" then
-		BundleAll = true
 	end
 
 	local ParsedIndex = IndexMap[VersionNumber]
@@ -120,7 +128,7 @@ function FetchOptions()
 		Confirmed = stdio.prompt("confirm", "are you sure you would like to bundle all of " .. OutputFile .. "'s kits?")
 	else
 		Confirmed =
-			stdio.prompt("confirm", "are you sure you would like to bundle " .. OutputFile:gsub("-", " Kit ") .. "?")
+			stdio.prompt("confirm", "are you sure you would like to bundle " .. OutputFile:gsub("-", " Kit ", 1) .. "?")
 	end
 
 	if not Confirmed then
