@@ -74,14 +74,25 @@ for _, kit in pairs(fs.readDir(SRC_FOLDER)) do
 	end
 end
 
-function fetchOptions()
-	local kitNumber = getArgument("select", "choose kit", kits)
-	local chosenKit = kits[kitNumber]
+local kitNumber = getArgument("select", "choose kit", kits)
+local chosenKit = kits[kitNumber]
 
+function fetchOptions()
 	local versionsRaw = versions[chosenKit]
 	local displayList, indexMap = sortBySemver(versionsRaw)
 
+	table.insert(displayList, "---")
+	table.insert(displayList, "Back")
+
 	local versionNumber = getArgument("select", "choose version", displayList)
+
+	if displayList[versionNumber] == "Back" then 
+		kitNumber = getArgument("select", "choose kit", kits)
+		chosenKit = kits[kitNumber]
+
+		return fetchOptions()
+	end
+
 	local parsedIndex = indexMap[versionNumber]
 
 	if not parsedIndex then
@@ -136,6 +147,10 @@ end
 
 local rootInstance = processDirectory(SRC_FOLDER)
 local buffer = roblox.serializeModel({ rootInstance })
+
+if not fs.isDir("build") then 
+	fs.writeDir("build/")
+end
 
 fs.writeFile("build/" .. OUTPUT_FILE, buffer)
 print("✅ Serialized", SRC_FOLDER, "→", "build/" .. OUTPUT_FILE)
