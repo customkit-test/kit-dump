@@ -149,7 +149,10 @@ function CreateModuleScript(Name, Source)
 end
 
 function ProcessDirectory(Directory)
+	local Split = string.split(Directory, "/")
 	local Folder = Instance.new("Folder")
+
+	Folder.Name = Split[#Split]
 
 	for _, File in pairs(fs.readDir(Directory)) do
 		local FullPath = Directory .. "/" .. File
